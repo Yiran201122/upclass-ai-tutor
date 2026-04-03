@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>업클래스 AI 튜터</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', 'Noto Sans KR', sans-serif;
+      background: #f0f2f5;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 24px 16px;
+    }
+
+    .page-title {
+      font-size: 13px;
+      color: #888;
+      margin-bottom: 14px;
+      letter-spacing: 0.03em;
+    }
+
+    .app {
+      width: 100%;
+      max-width: 420px;
+      background: #fff;
+      border-radius: 20px;
+      overflow: hidden;
+      box-shadow: 0 8px 40px rgba(0,0,0,0.12);
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* ── Header ── */
+    .header {
+      background: #1A3A6B;
+      padding: 14px 16px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      flex-shrink: 0;
+    }
+    .header-logo {
+      width: 34px;
+      height: 34px;
+      border-radius: 50%;
+      background: #fff;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: #1A3A6B;
+      flex-shrink: 0;
+    }
+    .header-info { flex: 1; }
+    .header-title { font-size: 14px; font-weight: 600; color: #fff; }
+    .header-sub { font-size: 10px; color: rgba(255,255,255,0.65); margin-top: 2px; }
+    .safety-badge {
+      font-size: 10px;
+      background: rgba(255,255,255,0.15);
+      color: #fff;
+      padding: 3px 9px;
+      border-radius: 20px;
+      border: 1px solid rgba(255,255,255,0.3);
+      white-space: nowrap;
+    }
+
+    /* ── Persona bar ── */
+    .persona-bar {
+      padding: 12px 14px;
+      border-bottom: 1px solid #f0f0f0;
+      background: #fafafa;
+      flex-shrink: 0;
+    }
+    .persona-label {
+      font-size: 10px;
+      color: #aaa;
+      margin-bottom: 8px;
+      letter-spacing: 0.02em;
+    }
+    .persona-buttons { display: flex; gap: 6px; flex-wrap: wrap; }
+    .persona-btn {
+      font-size: 12px;
+      padding: 5px 12px;
+      border-radius: 20px;
+      border: 1px solid #ddd;
+      background: #fff;
+      color: #555;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      font-family: inherit;
+    }
+    .persona-btn:hover { border-color: #1A3A6B; color: #1A3A6B; }
+    .persona-btn.active {
+      background: #1A3A6B;
+      color: #fff;
+      border-color: #1A3A6B;
+    }
+
+    /* ── Chat area ── */
+    .chat-area {
+      padding: 16px 14px;
+      display: flex;
+      flex-direction: column;
+      gap: 14px;
+      min-height: 340px;
+      max-height: 420px;
+      overflow-y: auto;
+      flex: 1;
+    }
+    .chat-area::-webkit-scrollbar { width: 4px; }
+    .chat-area::-webkit-scrollbar-thumb { background: #ddd; border-radius: 4px; }
+
+    .msg { display: flex; flex-direction: column; gap: 4px; }
+    .msg.user { align-items: flex-end; }
+    .msg.bot  { align-items: flex-start; }
+
+    .bubble {
+      padding: 10px 13px;
+      border-radius: 16px;
+      font-size: 13px;
+      line-height: 1.65;
+      max-width: 88%;
+      word-break: keep-all;
+    }
+    .msg.user .bubble {
+      background: #1A3A6B;
+      color: #fff;
+      border-bottom-right-radius: 4px;
+    }
+    .msg.bot .bubble {
+      background: #f4f6f9;
+      color: #222;
+      border-bottom-left-radius: 4px;
+      border: 1px solid #eaecf0;
+    }
+
+    .source-tag {
+      font-size: 10px;
+      color: #aaa;
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .source-dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #2E9E72;
+      flex-shrink: 0;
+    }
+
+    /* ── Typing indicator ── */
+    .typing {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 10px 13px;
+      background: #f4f6f9;
+      border-radius: 16px;
+      border-bottom-left-radius: 4px;
+      border: 1px solid #eaecf0;
+      width: fit-content;
+    }
+    .typing span {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: #bbb;
+      animation: blink 1.2s infinite;
+    }
+    .typing span:nth-child(2) { animation-delay: 0.2s; }
+    .typing span:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes blink {
+      0%, 80%, 100% { opacity: 0.2; }
+      40%           { opacity: 1; }
+    }
+
+    /* ── Input area ── */
+    .input-area {
+      padding: 12px 14px;
+      border-top: 1px solid #f0f0f0;
+      background: #fff;
+      flex-shrink: 0;
+    }
+    .quick-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-bottom: 10px;
+    }
+    .chip {
+      font-size: 11px;
+      padding: 4px 10px;
+      border-radius: 20px;
+      background: #f4f6f9;
+      border: 1px solid #e5e7eb;
+      color: #555;
+      cursor: pointer;
+      transition: all 0.15s;
+      font-family: inherit;
+    }
+    .chip:hover { border-color: #1A3A6B; color: #1A3A6B; background: #eef2fa; }
+
+    .input-row { display: flex; gap: 8px; align-items: center; }
+    .input-row input {
+      flex: 1;
+      height: 40px;
+      padding: 0 14px;
+      font-size: 13px;
+      border: 1px solid #ddd;
+      border-radius: 20px;
+      background: #f9f9f9;
+      color: #222;
+      outline: none;
+      font-family: inherit;
+      transition: border-color 0.15s;
+    }
+    .input-row input:focus { border-color: #1A3A6B; background: #fff; }
+    .input-row input::placeholder { color: #bbb; }
+
+    .send-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      background: #1A3A6B;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      flex-shrink: 0;
+      transition: background 0.15s;
+    }
+    .send-btn:hover { background: #15305c; }
+    .send-btn svg {
+      width: 16px;
+      height: 16px;
+      fill: none;
+      stroke: #fff;
+      stroke-width: 2;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* ── Footer ── */
+    .footer {
+      font-size: 10px;
+      color: #bbb;
+      margin-top: 12px;
+      text-align: center;
+    }
+  </style>
+</head>
+<body>
+
+  <p class="page-title">업클래스 AI 튜터 — 서비스 기획 시안</p>
+
+  <div class="app">
+
+    <!-- Header -->
+    <div class="header">
+      <div class="header-logo">UC</div>
+      <div class="header-info">
+        <div class="header-title">업클래스 AI 튜터</div>
+        <div class="header-sub">업비트 투자자 보호센터 공식 자료 기반</div>
+      </div>
+      <div class="safety-badge">검증된 DB</div>
+    </div>
+
+    <!-- Persona bar -->
+    <div class="persona-bar">
+      <div class="persona-label">내 눈높이를 선택하세요</div>
+      <div class="persona-buttons">
+        <button class="persona-btn"        onclick="setPersona(this,'child')">초등학생</button>
+        <button class="persona-btn active" onclick="setPersona(this,'adult')">일반 투자자</button>
+        <button class="persona-btn"        onclick="setPersona(this,'senior')">어르신</button>
+        <button class="persona-btn"        onclick="setPersona(this,'expert')">전문 투자자</button>
+      </div>
+    </div>
+
+    <!-- Chat -->
+    <div class="chat-area" id="chat">
+      <div class="msg bot">
+        <div class="bubble">안녕하세요! 업클래스 AI 튜터입니다.<br>가상자산에 대해 궁금한 점을 무엇이든 질문해 주세요.</div>
+        <div class="source-tag"><div class="source-dot"></div>업클래스 공식 DB 기반 답변</div>
+      </div>
+      <div class="msg user">
+        <div class="bubble">비트코인 반감기가 뭐야?</div>
+      </div>
+      <div class="msg bot">
+        <div class="bubble" id="default-answer">비트코인 반감기는 약 4년마다 비트코인을 채굴할 때 받는 보상이 절반으로 줄어드는 이벤트입니다. 공급량을 조절해 희소성을 유지하기 위한 설계로, 역사적으로 가격 변동의 주요 요인이 되어 왔습니다.</div>
+        <div class="source-tag"><div class="source-dot"></div>출처: 업비트 투자자 보호센터</div>
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="input-area">
+      <div class="quick-chips">
+        <button class="chip" onclick="sendChip(this)">스마트 컨트랙트란?</button>
+        <button class="chip" onclick="sendChip(this)">RWA가 뭐야?</button>
+        <button class="chip" onclick="sendChip(this)">피싱 사기 예방법</button>
+      </div>
+      <div class="input-row">
+        <input type="text" id="user-input" placeholder="궁금한 점을 입력하세요..." />
+        <button class="send-btn" onclick="sendMsg()" aria-label="전송">
+          <svg viewBox="0 0 24 24">
+            <line x1="22" y1="2" x2="11" y2="13"/>
+            <polygon points="22 2 15 22 11 13 2 9 22 2"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+  </div>
+
+  <p class="footer">© 업클래스 — 두나무 공식 검증 자료 기반 · 투자자 보호 목적 교육 서비스</p>
+
+  <script>
+    const personas = {
+      child: {
+        answers: {
+          '비트코인 반감기가 뭐야?':  '사탕 공장을 떠올려 보세요! 원래 하루에 사탕 50개를 만들던 공장이 어느 날부터 25개만 만들기로 했어요. 사탕이 더 귀해지겠죠? 비트코인 반감기가 딱 그런 원리예요.',
+          '스마트 컨트랙트란?':       '마법의 자판기예요! 동전을 넣으면 자동으로 과자가 나오듯, 조건이 맞으면 사람 없이도 자동으로 약속이 이루어지는 프로그램이에요.',
+          'RWA가 뭐야?':             '현실 세계의 물건(집, 금, 그림)을 디지털 카드로 만든 것이에요. 비싼 그림을 여러 명이 조각조각 나눠 가질 수 있게 해줘요.',
+          '피싱 사기 예방법':         '모르는 사람이 "선물 줄게, 여기 눌러봐"라고 하면 절대 클릭하면 안 돼요! 부모님께 먼저 여쭤보세요.',
+        }
+      },
+      adult: {
+        answers: {
+          '비트코인 반감기가 뭐야?':  '비트코인 반감기는 약 4년마다 채굴 보상이 절반으로 줄어드는 이벤트입니다. 공급량을 조절해 희소성을 유지하기 위한 설계로, 역사적으로 가격 변동의 주요 요인이 되어 왔습니다.',
+          '스마트 컨트랙트란?':       '블록체인 위에서 특정 조건이 충족되면 자동으로 계약을 실행하는 프로그램입니다. 중개자 없이 거래가 이루어져 비용과 시간을 절감할 수 있습니다.',
+          'RWA가 뭐야?':             'Real World Asset의 약자로, 부동산·채권·금 등 실물 자산을 블록체인 토큰으로 발행한 것입니다. 소액 분산 투자가 가능해 접근성이 높아집니다.',
+          '피싱 사기 예방법':         '출처 불명의 링크 클릭 금지, 공식 앱 외 지갑 연결 금지, 개인 키·시드 구문 절대 공유 금지가 핵심입니다. 의심스러우면 업비트 공식 채널에서 확인하세요.',
+        }
+      },
+      senior: {
+        answers: {
+          '비트코인 반감기가 뭐야?':  '쉽게 말씀드리면, 비트코인이 새로 만들어지는 양이 4년마다 딱 절반으로 줄어드는 시기입니다. 금처럼 양이 제한되어 희소성이 생기는 원리예요.',
+          '스마트 컨트랙트란?':       '은행 창구 직원 없이도 조건이 맞으면 자동으로 돈이 오가는 시스템입니다. 사람을 거치지 않아 더 빠르고 안전합니다.',
+          'RWA가 뭐야?':             '땅이나 건물, 금 같은 실물 재산을 인터넷에서 쪼개어 거래할 수 있게 만든 것입니다. 비싼 부동산을 소액으로 투자할 수 있어요.',
+          '피싱 사기 예방법':         '전화나 문자로 "코인 무료로 드린다", "인증번호 알려달라"는 요청은 100% 사기입니다. 가족이나 업비트 공식 센터에 먼저 확인하세요.',
+        }
+      },
+      expert: {
+        answers: {
+          '비트코인 반감기가 뭐야?':  '블록 보상이 210,000블록(약 4년)마다 50% 감소하는 이벤트입니다. Stock-to-Flow 모델 관점에서 S2F 비율 상승이 장기 가격 지지 요인으로 작용하며, 채굴 원가 상승에 따른 해시레이트 조정도 함께 관찰됩니다.',
+          '스마트 컨트랙트란?':       'EVM 호환 체인에서 바이트코드로 배포되는 자율 실행 프로그램입니다. Turing-complete 연산을 지원하며, 오라클 연동으로 온체인-오프체인 데이터를 결합할 수 있습니다.',
+          'RWA가 뭐야?':             '실물 자산의 토큰화(tokenization)로, ERC-1400 등 증권형 토큰 표준을 활용합니다. BlackRock BUIDL 등 기관 참여로 TVL이 급성장 중이며, 규제 샌드박스 동향이 핵심 리스크입니다.',
+          '피싱 사기 예방법':         'Wallet drainer, approval phishing, address poisoning이 주요 공격 벡터입니다. Revoke.cash로 토큰 승인 내역을 정기 점검하고, 하드웨어 월렛 사용 및 멀티시그 설정을 권장합니다.',
+        }
+      }
+    };
+
+    let currentPersona = 'adult';
+
+    function setPersona(btn, persona) {
+      document.querySelectorAll('.persona-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      currentPersona = persona;
+      const el = document.getElementById('default-answer');
+      if (el) el.textContent = personas[persona].answers['비트코인 반감기가 뭐야?'];
+    }
+
+    function sendChip(chip) {
+      document.getElementById('user-input').value = chip.textContent;
+      sendMsg();
+    }
+
+    function sendMsg() {
+      const input = document.getElementById('user-input');
+      const text  = input.value.trim();
+      if (!text) return;
+      input.value = '';
+
+      const chat = document.getElementById('chat');
+
+      // User bubble
+      const userDiv = document.createElement('div');
+      userDiv.className = 'msg user';
+      userDiv.innerHTML = `<div class="bubble">${escapeHtml(text)}</div>`;
+      chat.appendChild(userDiv);
+      scrollBottom(chat);
+
+      // Typing indicator
+      const typingWrap = document.createElement('div');
+      typingWrap.className = 'msg bot';
+      typingWrap.innerHTML = `<div class="typing"><span></span><span></span><span></span></div>`;
+      chat.appendChild(typingWrap);
+      scrollBottom(chat);
+
+      setTimeout(() => {
+        const answers = personas[currentPersona].answers;
+        const answer  = answers[text] ||
+          `"${escapeHtml(text)}"에 대한 정보는 업비트 투자자 보호센터 공식 자료를 바탕으로 검토 중입니다. 현재 선택하신 눈높이(${getPersonaLabel()})에 맞게 곧 안내드릴게요.`;
+
+        typingWrap.innerHTML = `
+          <div class="bubble">${answer}</div>
+          <div class="source-tag"><div class="source-dot"></div>출처: 업비트 투자자 보호센터</div>
+        `;
+        scrollBottom(chat);
+      }, 1100);
+    }
+
+    function scrollBottom(el) {
+      el.scrollTop = el.scrollHeight;
+    }
+
+    function getPersonaLabel() {
+      const map = { child:'초등학생', adult:'일반 투자자', senior:'어르신', expert:'전문 투자자' };
+      return map[currentPersona] || '';
+    }
+
+    function escapeHtml(str) {
+      return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+    }
+
+    // Enter key
+    document.getElementById('user-input').addEventListener('keydown', function(e) {
+      if (e.key === 'Enter') sendMsg();
+    });
+  </script>
+
+</body>
+</html>
